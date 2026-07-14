@@ -1,8 +1,8 @@
 {
-  "name": "mc-command-mcp",
+  "name": "mcfunction-debug-toolkit",
   "private": true,
   "version": "0.1.0",
-  "description": "Fabric bridge and MCP server for Minecraft command development",
+  "description": "Fabric debugging toolkit for Minecraft commands and datapacks, with optional MCP integration",
   "type": "module",
   "workspaces": [
     "packages/protocol",

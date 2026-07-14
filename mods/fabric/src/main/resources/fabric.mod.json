@@ -2,10 +2,13 @@
   "schemaVersion": 1,
   "id": "mc-command-bridge",
   "version": "${version}",
-  "name": "MC Command Bridge",
-  "description": "Local command development bridge for MC Command MCP.",
-  "authors": ["Underline"],
-  "contact": {},
+  "name": "MCFunction Debug Toolkit",
+  "description": "Debug commands and datapacks with concise #! directives, live diagnostics, input automation, screenshots, and optional MCP integration.",
+  "authors": ["Ethanout"],
+  "contact": {
+    "sources": "https://github.com/Ethanout/mcfunction-debug-toolkit",
+    "issues": "https://github.com/Ethanout/mcfunction-debug-toolkit/issues"
+  },
   "license": "MIT",
   "environment": "*",
   "entrypoints": {

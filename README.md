@@ -1,56 +1,60 @@
-# MC Command MCP
+# MCFunction Debug Toolkit
 
-面向 Minecraft Java 命令与数据包开发的本地测试工具。它把正在运行的
-Minecraft 连接到支持 MCP 的 AI 客户端，让 AI 能够执行和验证命令、读取聊天栏与
-`tellraw`、观察 `#!` 调试输出、操作玩家和 GUI，并通过 JPEG 截图检查结果。
+**English** | [简体中文](README_zh-CN.md)
 
-> 当前版本是开发预览版 `0.1.0`，目标游戏版本为 Minecraft Java `26.2`。
-> 请先在测试存档中使用，不要直接连接重要存档或生产服务器。
+A Fabric debugging mod for Minecraft Java commands, functions, and datapacks.
+Without any AI integration, its concise `#!` directives can inspect command
+context, scoreboards, and NBT directly from `.mcfunction` files. Its optional
+MCP bridge additionally lets AI clients validate and run commands, read chat and
+`tellraw`, control the player and GUI, and inspect JPEG screenshots.
 
-## 它能做什么
+> Version `0.1.0` is a development preview targeting Minecraft Java `26.2`.
+> Use a test world first; do not begin with an important world or production server.
 
-- 用原版 Brigadier 命令树验证命令，并返回准确的错误位置；
-- 单条或批量执行命令，汇总 fork 后的所有结果与反馈；
-- 增量读取聊天栏，包括 `tellraw` 和系统消息；
-- 在 `.mcfunction` 中使用简短的 `#!` 调试模板读取上下文、记分板和 NBT；
-- 控制移动键、长按、视角、GUI 光标、单击、双击和拖动；
-- 窗口失焦时释放鼠标并取消正在进行的输入序列；
-- 截取 JPEG 画面，同时返回文件路径与 MCP 图片内容；
-- 对聊天、事件、反馈、NBT、截图和执行时间设置明确上限。
+## Features
 
-## 组件关系
+- Validate commands against the live vanilla Brigadier tree with exact error positions.
+- Run one command or a bounded batch and aggregate every forked callback.
+- Incrementally read HUD chat, including `tellraw` and system messages.
+- Use short `#!` templates in `.mcfunction` files to inspect context, scores, and NBT.
+- Automate movement keys, holds, camera look, GUI cursor, clicks, double-clicks, and drags.
+- Release the mouse and cancel active input when the game loses focus.
+- Capture JPEG screenshots as both saved files and MCP image content.
+- Apply explicit limits to chat, events, feedback, NBT, screenshots, and execution time.
+
+## How it fits together
 
 ```text
-AI / MCP 客户端
+AI / MCP client
        │ stdio
        ▼
-Node.js MCP 服务
-       │ 带令牌的本机 HTTP
-       ├── 127.0.0.1:8766 → 服务端命令、#! 事件
-       └── 127.0.0.1:8767 → 聊天、输入、截图
+Node.js MCP server
+       │ authenticated loopback HTTP
+       ├── 127.0.0.1:8766 → server commands and #! events
+       └── 127.0.0.1:8767 → chat, input, and screenshots
                          ▲
-                    Fabric 模组
+                     Fabric mod
 ```
 
-两个端口只监听本机回环地址。它们使用同一个随机令牌。
+Both ports bind only to loopback and use the same random bearer token.
 
-## 环境要求
+## Requirements
 
-| 项目 | 版本 |
+| Component | Version |
 |---|---|
 | Minecraft Java | `26.2` |
-| Fabric Loader | `0.19.3` 或兼容新版 |
+| Fabric Loader | `0.19.3` or a compatible newer release |
 | Fabric API | `0.154.2+26.2` |
 | Java | `25` |
-| Node.js | `18` 或更高 |
+| Node.js | `18` or newer |
 
-## 快速开始
+## Quick start
 
-### 1. 构建模组和 MCP 服务
+### 1. Build the mod and MCP server
 
 ```powershell
-git clone https://github.com/Ethanout/mc-command-mcp.git
-cd mc-command-mcp
+git clone https://github.com/Ethanout/mcfunction-debug-toolkit.git
+cd mcfunction-debug-toolkit
 npm install
 npm run build
 
@@ -58,81 +62,82 @@ cd mods/fabric
 .\gradlew.bat build
 ```
 
-Fabric 模组生成在 `mods/fabric/build/libs/`。项目的 Gradle Wrapper 已配置国内
-镜像；如果系统没有自动找到 Java 25，请先正确设置 `JAVA_HOME`。
+The Fabric jar is written to `mods/fabric/build/libs/`. The Gradle wrapper is
+configured with a mirror that is convenient in mainland China. If Gradle cannot
+find Java 25, set `JAVA_HOME` first.
 
-### 2. 安装模组
+### 2. Install the mod
 
-把下面两个 jar 放入同一个 Fabric 26.2 实例的 `mods` 文件夹：
+Place both jars in the `mods` directory of the same Fabric 26.2 instance:
 
-1. 本项目生成的 `mc-command-bridge-0.1.0.jar`；
-2. 对应 Minecraft 26.2 的 Fabric API。
+1. the generated `mc-command-bridge-0.1.0.jar`;
+2. Fabric API for Minecraft 26.2.
 
-启动一次游戏。模组会在实例目录生成：
+Launch the game once. The mod creates:
 
 ```text
 config/mc-command-mcp.token
 ```
 
-不要把这个令牌提交到 Git、截图分享或发给不可信程序。
+Do not commit this token, include it in screenshots, or share it with untrusted software.
 
-### 3. 启动 MCP 服务
+### 3. Start the MCP server
 
-开发实例的 PowerShell 示例：
+For the bundled development instance on PowerShell:
 
 ```powershell
 $env:MC_COMMAND_TOKEN = Get-Content ".\mods\fabric\run\config\mc-command-mcp.token" -Raw
 npm run start:mcp
 ```
 
-普通启动器实例请把路径换成该实例自己的 `config/mc-command-mcp.token`。
+For a launcher-managed instance, use that instance's own token file instead.
 
-支持 MCP JSON 配置的客户端可以使用：
+An MCP client that accepts JSON configuration can use:
 
 ```json
 {
   "mcpServers": {
     "mc-command": {
       "command": "node",
-      "args": ["C:\\absolute\\path\\mc-command-mcp\\packages\\mcp-server\\dist\\index.js"],
+      "args": ["C:\\absolute\\path\\mcfunction-debug-toolkit\\packages\\mcp-server\\dist\\index.js"],
       "env": {
-        "MC_COMMAND_TOKEN": "复制 token 文件中的完整内容"
+        "MC_COMMAND_TOKEN": "paste the complete token file contents here"
       }
     }
   }
 }
 ```
 
-配置文件格式因客户端而异，但入口始终是
-`packages/mcp-server/dist/index.js`。启动游戏并进入存档后，让 AI 先调用
-`mc_status` 和 `mc_client_status` 检查连接。
+Configuration syntax differs between MCP clients, but the entry point is always
+`packages/mcp-server/dist/index.js`. After joining a world, ask the AI to call
+`mc_status` and `mc_client_status` first.
 
-## MCP 工具
+## MCP tools
 
-| 工具 | 用途 |
+| Tool | Purpose |
 |---|---|
-| `mc_status` | 查看服务端桥接、游戏版本和能力 |
-| `mc_client_status` | 查看客户端连接、焦点和鼠标状态 |
-| `mc_command_validate` | 只验证命令，不执行 |
-| `mc_command_run` | 执行一条命令并返回结构化结果 |
-| `mc_command_batch` | 顺序执行最多 100 条命令 |
-| `mc_chat` | 增量读取聊天栏和 `tellraw` |
-| `mc_debug_events` | 读取成功的 `#!` 输出和运行时错误 |
-| `mc_debug_diagnostics` | 读取 reload 警告和详细诊断 |
-| `mc_input_sequence` | 执行按键、视角、光标、点击和拖动序列 |
-| `mc_screenshot` | 获取 JPEG 截图 |
+| `mc_status` | Inspect the server bridge, game version, and capabilities |
+| `mc_client_status` | Inspect client connection, focus, and mouse state |
+| `mc_command_validate` | Validate without executing |
+| `mc_command_run` | Execute one command and return structured results |
+| `mc_command_batch` | Execute up to 100 commands sequentially |
+| `mc_chat` | Incrementally read HUD chat and `tellraw` |
+| `mc_debug_events` | Read successful `#!` output and runtime errors |
+| `mc_debug_diagnostics` | Read reload warnings and detailed diagnostics |
+| `mc_input_sequence` | Run key, camera, cursor, click, and drag sequences |
+| `mc_screenshot` | Capture a JPEG screenshot |
 
-建议的 AI 测试循环：
+A useful AI testing loop is:
 
-1. 调用 `mc_command_validate` 检查语法；
-2. 记录聊天与调试事件游标；
-3. 调用 `mc_command_run` 或 `mc_command_batch`；
-4. 用 `mc_chat`、`mc_debug_events` 读取新增输出；
-5. 必要时操作角色或 GUI，并调用 `mc_screenshot` 验证画面。
+1. validate syntax with `mc_command_validate`;
+2. remember the current chat and debug cursors;
+3. call `mc_command_run` or `mc_command_batch`;
+4. poll `mc_chat` and `mc_debug_events` for new output;
+5. interact with the player or GUI and use `mc_screenshot` when visual proof matters.
 
-## 输入序列示例
+## Input examples
 
-移动、转向和右键：
+Move, turn, and right-click:
 
 ```json
 {
@@ -144,7 +149,7 @@ npm run start:mcp
 }
 ```
 
-GUI 光标、双击和拖动：
+Move the GUI cursor, double-click, and drag:
 
 ```json
 {
@@ -157,57 +162,64 @@ GUI 光标、双击和拖动：
 }
 ```
 
-`cursor` 和 `drag` 只在打开 GUI、鼠标未被游戏锁定时使用。`look` 专门用于游戏内
-视角。输入序列最多 200 步；失焦、超时或客户端关闭都会释放正在按住的输入。
+Use `cursor` and `drag` only while a GUI is open and the mouse is released.
+Use `look` for the in-game camera. A request may contain at most 200 steps;
+focus loss, timeout, and client shutdown release every held input.
 
-## `#!` 数据包调试
+## `#!` datapack debugging
 
-在 `.mcfunction` 中可以直接写：
+Write debug output directly in a `.mcfunction` file:
 
 ```mcfunction
-#! 当前函数={fname}，位置={position:.2f}
-#! 分数：{@e num: {"{display_name}: {score:04d}"}, ...}
-#! NBT：{storage demo:test values[]: {}, ...}
+#! function={fname}, position={position:.2f}
+#! scores: {@e num: {"{display_name}: {score:04d}"}, ...}
+#! NBT: {storage demo:test values[]: {}, ...}
 ```
 
-它会像调试版 `tellraw` 一样把结果发给所有玩家，同时写入 AI 可读取的结构化
-事件。错误的 `#!` 会在 reload 时警告并跳过，不会破坏函数的其他命令；运行时
-错误会在屏幕显示简短信息并继续执行函数。
+The result is sent to all players like a compact debugging-oriented `tellraw`
+and is also mirrored to structured events for AI clients. Invalid directives
+produce reload warnings and are skipped without breaking the rest of the
+function. Runtime errors show a short on-screen message and function execution continues.
 
-完整语法、列表 `...`、默认 `/strip`、嵌套格式和数字格式见
-[调试指令手册](docs/DEBUG_DIRECTIVES.md)。
+The full query language, repeating `...`, default `/strip`, nested formats, and
+numeric formatting are documented in the
+[`#!` directive guide](docs/DEBUG_DIRECTIVES.md) (currently Chinese).
 
-## 安全说明
+## Security notes
 
-- 端口必须保持在 `127.0.0.1`，不要通过端口映射暴露到局域网或公网；
-- 持有令牌的程序相当于拥有高权限 Minecraft 命令源；
-- `allow_dangerous` 只是防误操作护栏，不是安全沙箱；
-- 超时返回 `timeout_unknown_outcome` 时，命令可能已经执行，禁止自动重试；
-- 测试 AI 自动操作时优先使用临时存档，并保留重要世界备份。
+- Keep both ports on `127.0.0.1`; never expose them through port forwarding.
+- Software holding the bearer token effectively has a privileged Minecraft command source.
+- `allow_dangerous` is an accidental-misuse guard, not a security sandbox.
+- If a timeout reports `timeout_unknown_outcome`, the command may already have run; do not retry automatically.
+- Prefer disposable worlds and keep backups when testing AI automation.
 
-## 常见问题
+## Troubleshooting
 
-**`mc_status` 连接失败**
+**`mc_status` cannot connect**
 
-确认已经进入单人世界或服务器已启动；端口 `8766` 只有服务端生命周期就绪后才出现。
+Join a single-player world or start the server. Port `8766` exists only while
+the server lifecycle is ready.
 
-**`mc_client_status` 连接失败**
+**`mc_client_status` cannot connect**
 
-确认安装的是客户端+服务端均可用的完整模组，并检查 `8767` 是否被其他程序占用。
+Verify that the complete mod is installed on the client and that port `8767`
+is not already in use.
 
-**返回 `unauthorized`**
+**The bridge returns `unauthorized`**
 
-MCP 服务使用的 `MC_COMMAND_TOKEN` 与当前游戏实例的 token 文件不一致。
+The MCP process and the current game instance are using different token files.
 
-**GUI 光标步骤报错**
+**A GUI cursor step fails**
 
-先打开背包、箱子或其他界面。游戏内自由视角应使用 `look`，不是 `cursor`。
+Open an inventory, chest, or another screen first. Use `look`, not `cursor`, for
+free camera movement in gameplay.
 
-**命令超时后不知道是否执行**
+**A command timed out and its outcome is unclear**
 
-检查 `error_code`、`outcome` 和 `retry_safe`。只有 `retry_safe=true` 才能安全重试。
+Inspect `error_code`, `outcome`, and `retry_safe`. Retry only when
+`retry_safe=true`.
 
-## 开发与验证
+## Development and verification
 
 ```powershell
 # TypeScript
@@ -215,33 +227,35 @@ npm run build
 npm run typecheck
 npm test
 
-# Fabric（中文路径会自动使用独立 JUnit 启动器）
+# Fabric (the isolated launcher works around Windows non-ASCII path issues)
 cd mods/fabric
 .\gradlew.bat check
 
-# 已进入版本化测试存档时
+# While the versioned test world is open
 cd ../..
 npm run test:real
 npm run test:screenshot-single-flight
 ```
 
-版本化真实测试数据包位于 `test-data/datapacks/mc-command-syntax-test`。安装与测试
-说明见 [真实语法测试](docs/REAL_WORLD_SYNTAX_TEST.md)。HTTP 细节和边界见
-[协议文档](docs/PROTOCOL.md)，模块职责见[架构文档](docs/ARCHITECTURE.md)。
+The versioned test datapack is under
+`test-data/datapacks/mc-command-syntax-test`. See
+[real-world syntax testing](docs/REAL_WORLD_SYNTAX_TEST.md),
+[the wire protocol](docs/PROTOCOL.md), and
+[the architecture](docs/ARCHITECTURE.md) for implementation details.
 
-## 项目结构
+## Repository layout
 
 ```text
-mods/fabric/          Fabric 模组与 Java 测试
-packages/protocol/    TypeScript 协议类型和校验
-packages/mcp-server/  MCP stdio 服务
-test-data/            版本化实机测试数据包
-scripts/              安装、冒烟与真实回归脚本
-docs/                 语法、协议、架构与审计记录
+mods/fabric/          Fabric mod and Java tests
+packages/protocol/    Shared TypeScript protocol schemas
+packages/mcp-server/  MCP stdio server
+test-data/            Versioned real-world test datapack
+scripts/              Install, smoke, and integration scripts
+docs/                 Syntax, protocol, architecture, and audit records
 ```
 
-本项目不导入或构建旧的 `minecraft-mod-mcp`。
+This project does not import or build the old `minecraft-mod-mcp` project.
 
-## 许可证
+## License
 
 [MIT](LICENSE)
