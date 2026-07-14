@@ -14,6 +14,7 @@ import dev.underline.mccommand.bridge.debug.DebugAst.NestedListPart;
 import dev.underline.mccommand.bridge.debug.DebugAst.NumericFormat;
 import dev.underline.mccommand.bridge.debug.DebugAst.Query;
 import dev.underline.mccommand.bridge.debug.DebugAst.ScoreQuery;
+import dev.underline.mccommand.bridge.debug.DebugAst.SelectorQuery;
 import dev.underline.mccommand.bridge.debug.DebugAst.TemplatePart;
 import dev.underline.mccommand.bridge.debug.DebugAst.TextPart;
 
@@ -34,9 +35,6 @@ public final class DebugDirectiveParser {
             throw error("directive_too_long", 0, "directive exceeds 32000 characters");
         }
         List<TemplatePart> parts = parseTemplate(source, 0);
-        if (parts.stream().noneMatch(ExpressionPart.class::isInstance)) {
-            throw error("missing_expression", 0, "directive must contain at least one {...} expression");
-        }
         return new DebugAst.Directive(functionId, startLine, endLine, source, parts);
     }
 
@@ -101,7 +99,12 @@ public final class DebugDirectiveParser {
         List<Token> tokens = tokenize(source, offset);
         if (tokens.isEmpty()) throw error("empty_query", offset, "query cannot be empty");
         if (tokens.size() == 1) {
-            String key = tokens.getFirst().text().toLowerCase(Locale.ROOT);
+            Token token = tokens.getFirst();
+            String original = token.text();
+            String key = original.toLowerCase(Locale.ROOT);
+            if (original.startsWith("@")) {
+                return new SelectorQuery(original, offset + token.start());
+            }
             return switch (key) {
                 case "name" -> new ContextQuery(ContextKey.NAME);
                 case "dim", "dimension" -> new ContextQuery(ContextKey.DIMENSION);

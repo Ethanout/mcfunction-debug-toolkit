@@ -14,8 +14,10 @@ import dev.underline.mccommand.bridge.debug.DebugAst.FormatText;
 import dev.underline.mccommand.bridge.debug.DebugAst.NestedListPart;
 import dev.underline.mccommand.bridge.debug.DebugAst.NumericFormat;
 import dev.underline.mccommand.bridge.debug.DebugAst.ScoreQuery;
+import dev.underline.mccommand.bridge.debug.DebugAst.SelectorQuery;
 import dev.underline.mccommand.bridge.debug.DebugAst.TemplatePart;
 import dev.underline.mccommand.bridge.debug.DebugAst.TextPart;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
@@ -88,6 +90,9 @@ final class DebugDirectiveRenderer {
         if (expression.query() instanceof ContextQuery context) {
             return List.of(contextItem(source, directive, context.key(), stack));
         }
+        if (expression.query() instanceof SelectorQuery selector) {
+            return List.of(selectorItem(source, selector, budget));
+        }
         if (expression.query() instanceof ScoreQuery score) {
             return scoreItems(source, score, budget);
         }
@@ -97,6 +102,36 @@ final class DebugDirectiveRenderer {
         throw new DebugRuntimeException("unknown_query", "unknown directive query");
     }
 
+    private RenderItem selectorItem(
+            CommandSourceStack source,
+            SelectorQuery query,
+            RenderBudget budget
+    ) throws DebugRuntimeException {
+        final List<? extends Entity> entities;
+        try {
+            StringReader reader = new StringReader(query.selector());
+            EntitySelector selector = EntityArgument.entities().parse(reader);
+            if (reader.canRead()) {
+                throw new DebugRuntimeException(
+                        "invalid_entity_selector", "trailing input in entity selector at " + reader.getCursor());
+            }
+            if (selector.getMaxResults() > MAX_SOURCE_VISITS) {
+                selector = EntityArgument.entities().parse(new StringReader(
+                        capEntitySelector(query.selector(), MAX_SOURCE_VISITS + 1)));
+            }
+            entities = selector.findEntities(source);
+        } catch (CommandSyntaxException error) {
+            throw new DebugRuntimeException("invalid_entity_selector", error.getMessage());
+        }
+
+        List<Entity> bounded = new ArrayList<>();
+        for (Entity entity : entities) {
+            if (!budget.tryVisitSource() || !budget.tryConsume()) break;
+            bounded.add(entity);
+        }
+        return RenderItem.single(stringValue(EntitySelector.joinNames(bounded)));
+    }
+
     private RenderItem contextItem(
             CommandSourceStack source,
             DebugAst.Directive directive,
@@ -104,15 +139,15 @@ final class DebugDirectiveRenderer {
             List<Identifier> stack
     ) {
         return switch (key) {
-            case NAME -> RenderItem.single(source.getDisplayName());
+            case NAME -> RenderItem.single(stringValue(source.getDisplayName()));
             case DIMENSION -> RenderItem.single(dimension(source));
             case POSITION -> numericContext(List.of(
                     source.getPosition().x, source.getPosition().y, source.getPosition().z));
             case ROTATION -> numericContext(List.of(
                     source.getRotation().y, source.getRotation().x));
-            case ANCHOR -> RenderItem.single(Component.literal(
+            case ANCHOR -> RenderItem.single(identifierValue(
                     source.getAnchor() == EntityAnchorArgument.Anchor.EYES ? "eyes" : "feet"));
-            case FUNCTION_NAME -> RenderItem.single(Component.literal(
+            case FUNCTION_NAME -> RenderItem.single(identifierValue(
                     stack.isEmpty() ? directive.functionId() : stack.getLast().toString()));
             case FUNCTION_STACK -> RenderItem.single(joinedIdentifiers(stack.isEmpty()
                     ? List.of(Identifier.parse(directive.functionId())) : stack));
@@ -124,7 +159,7 @@ final class DebugDirectiveRenderer {
         List<RenderItem> children = new ArrayList<>();
         for (int index = 0; index < values.size(); index++) {
             Number number = values.get(index);
-            Component component = Component.literal(number.toString());
+            Component component = numberValue(number.toString());
             if (index > 0) combined.append(" ");
             combined.append(component);
             RenderValue value = new RenderValue(component, number);
@@ -137,14 +172,15 @@ final class DebugDirectiveRenderer {
     private static Component dimension(CommandSourceStack source) {
         Identifier id = source.getLevel().dimension().identifier();
         return Component.translatableWithFallback(id.toLanguageKey("dimension"), id.toString())
-                .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(Component.literal(id.toString()))));
+                .withStyle(ChatFormatting.AQUA)
+                .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(identifierValue(id.toString()))));
     }
 
     private static Component joinedIdentifiers(List<Identifier> values) {
         MutableComponent result = Component.empty();
         for (int index = 0; index < values.size(); index++) {
-            if (index > 0) result.append(" -> ");
-            result.append(values.get(index).toString());
+            if (index > 0) result.append(Component.literal(" -> ").withStyle(ChatFormatting.GRAY));
+            result.append(identifierValue(values.get(index).toString()));
         }
         return result;
     }
@@ -173,18 +209,18 @@ final class DebugDirectiveRenderer {
             if (!budget.tryConsume()) break;
             String holderName = holder.getScoreboardName();
             Component nativeDisplayName = holder.getDisplayName();
-            Component displayName = (nativeDisplayName == null
+            Component displayName = stringValue(nativeDisplayName == null
                     ? Component.literal(holderName)
-                    : nativeDisplayName.copy()).withStyle(style ->
-                    style.withHoverEvent(new HoverEvent.ShowText(Component.literal(holderName))));
-            Component score = Component.literal(Integer.toString(info.value()));
+                    : nativeDisplayName).copy().withStyle(style ->
+                    style.withHoverEvent(new HoverEvent.ShowText(stringValue(Component.literal(holderName)))));
+            Component score = numberValue(Integer.toString(info.value()));
             MutableComponent defaultMulti = Component.empty().append(displayName).append(": ").append(score);
             Map<String, RenderValue> fields = new LinkedHashMap<>();
             fields.put("", new RenderValue(score, info.value()));
             fields.put("score", new RenderValue(score, info.value()));
             fields.put("name", new RenderValue(displayName, null));
             fields.put("display_name", new RenderValue(displayName, null));
-            fields.put("holder", new RenderValue(Component.literal(holderName), null));
+            fields.put("holder", new RenderValue(stringValue(Component.literal(holderName)), null));
             items.add(new RenderItem(Map.copyOf(fields), defaultMulti, List.of()));
         }
         return List.copyOf(items);
@@ -236,7 +272,7 @@ final class DebugDirectiveRenderer {
         }
         CompoundTag root = source.getServer().getCommandStorage().get(id);
         if (!budget.tryVisitSource()) return List.of();
-        DataGroup group = dataGroup(Component.literal(id.toString()), 0, valuesAt(path, root), budget);
+        DataGroup group = dataGroup(identifierValue(id.toString()), 0, valuesAt(path, root), budget);
         return group.children().isEmpty() ? List.of() : List.of(group);
     }
 
@@ -272,7 +308,7 @@ final class DebugDirectiveRenderer {
             CompoundTag root = output.buildResult();
             if (!budget.tryConsumeNbtBytes(root.sizeInBytes())) break;
             List<Tag> values = valuesAt(path, root);
-            Component label = entity.getDisplayName();
+            Component label = stringValue(entity.getDisplayName());
             DataGroup group = dataGroup(label, entityIndex, globalIndex, values, budget);
             if (!group.children().isEmpty()) groups.add(group);
             globalIndex += group.children().size();
@@ -361,7 +397,7 @@ final class DebugDirectiveRenderer {
         CompoundTag root = blockEntity.saveWithFullMetadata(source.registryAccess());
         if (!budget.tryConsumeNbtBytes(root.sizeInBytes())) return List.of();
         DataGroup group = dataGroup(
-                Component.literal(position.toShortString()), 0, valuesAt(path, root), budget);
+                numberValue(position.toShortString()), 0, valuesAt(path, root), budget);
         return group.children().isEmpty() ? List.of() : List.of(group);
     }
 
@@ -400,9 +436,9 @@ final class DebugDirectiveRenderer {
             fields.put("", new RenderValue(value, number));
             fields.put("value", new RenderValue(value, number));
             fields.put("entity", new RenderValue(label, null));
-            fields.put("index", new RenderValue(Component.literal(Integer.toString(index)), index));
-            fields.put("entity_index", new RenderValue(Component.literal(Integer.toString(sourceIndex)), sourceIndex));
-            fields.put("global_index", new RenderValue(Component.literal(Integer.toString(globalStart + index)), globalStart + index));
+            fields.put("index", new RenderValue(numberValue(Integer.toString(index)), index));
+            fields.put("entity_index", new RenderValue(numberValue(Integer.toString(sourceIndex)), sourceIndex));
+            fields.put("global_index", new RenderValue(numberValue(Integer.toString(globalStart + index)), globalStart + index));
             children.add(new RenderItem(Map.copyOf(fields), value, List.of()));
         }
         return new DataGroup(label, sourceIndex, globalStart, List.copyOf(children));
@@ -531,7 +567,25 @@ final class DebugDirectiveRenderer {
         if (format == null || value.number() == null) return value.component();
         String formatted = formatNumber(value.number(), format);
         if (formatted == null) return value.component();
-        return Component.literal(formatted).withStyle(value.component().getStyle());
+        return formattedNumberValue(formatted, value.component());
+    }
+
+    static Component formattedNumberValue(String formatted, Component source) {
+        MutableComponent result = Component.literal(formatted).withStyle(source.getStyle());
+        return result.getStyle().getColor() == null ? result.withStyle(ChatFormatting.GOLD) : result;
+    }
+
+    static Component numberValue(String value) {
+        return Component.literal(value).withStyle(ChatFormatting.GOLD);
+    }
+
+    static Component identifierValue(String value) {
+        return Component.literal(value).withStyle(ChatFormatting.AQUA);
+    }
+
+    static Component stringValue(Component value) {
+        MutableComponent copy = value.copy();
+        return copy.getStyle().getColor() == null ? copy.withStyle(ChatFormatting.GREEN) : copy;
     }
 
     static String formatNumber(Number number, NumericFormat format) {
@@ -665,8 +719,8 @@ final class DebugDirectiveRenderer {
                     "", value,
                     "value", value,
                     "entity", value,
-                    "entity_index", new RenderValue(Component.literal(Integer.toString(sourceIndex)), sourceIndex),
-                    "global_index", new RenderValue(Component.literal(Integer.toString(globalStart)), globalStart)
+                    "entity_index", new RenderValue(numberValue(Integer.toString(sourceIndex)), sourceIndex),
+                    "global_index", new RenderValue(numberValue(Integer.toString(globalStart)), globalStart)
             );
             return new RenderItem(fields, label, children);
         }

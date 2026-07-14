@@ -1,7 +1,7 @@
 {
   "name": "mcfunction-debug-toolkit",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Fabric debugging toolkit for Minecraft commands and datapacks, with optional MCP integration",
   "type": "module",
   "workspaces": [
@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "version:set": "npm version --no-git-tag-version",
     "start:mcp": "npm run start -w @mc-command/mcp-server",
     "test": "node scripts/smoke-mcp.mjs",
     "test:install-datapack": "node scripts/install-syntax-test.mjs",

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
+
+const toolkitVersion = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
 
 const child = spawn(process.execPath, ["packages/mcp-server/dist/index.js"], {
   cwd: process.cwd(),
@@ -51,11 +54,12 @@ try {
     params: {
       protocolVersion: "2025-06-18",
       capabilities: {},
-      clientInfo: { name: "smoke-test", version: "0.1.0" },
+      clientInfo: { name: "smoke-test", version: "0.0.0-test" },
     },
   });
   const initialized = await response(1);
   assert.equal(initialized.result.serverInfo.name, "mc-command-mcp");
+  assert.equal(initialized.result.serverInfo.version, toolkitVersion);
 
   send({ jsonrpc: "2.0", method: "notifications/initialized" });
   send({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });

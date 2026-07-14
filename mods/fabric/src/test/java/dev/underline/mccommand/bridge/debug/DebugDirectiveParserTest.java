@@ -1,10 +1,12 @@
 package dev.underline.mccommand.bridge.debug;
 
 import com.mojang.brigadier.StringReader;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.arguments.NbtPathArgument;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,24 @@ final class DebugDirectiveParserTest {
         DebugAst.ExpressionPart expression = assertInstanceOf(DebugAst.ExpressionPart.class, directive.parts().get(1));
         assertEquals(DebugAst.ContextKey.NAME, assertInstanceOf(DebugAst.ContextQuery.class, expression.query()).key());
         assertEquals("}", assertInstanceOf(DebugAst.TextPart.class, directive.parts().get(2)).text());
+    }
+
+    @Test
+    void parsesPureTextAsAUsefulDebugSeparator() throws Exception {
+        DebugAst.Directive directive = parser.parse("test:main", 3, 3, "=====Debug=====");
+        assertEquals(1, directive.parts().size());
+        assertEquals("=====Debug=====",
+                assertInstanceOf(DebugAst.TextPart.class, directive.parts().getFirst()).text());
+    }
+
+    @Test
+    void parsesSingleSelectorShorthand() throws Exception {
+        DebugAst.Directive shorthand = parser.parse("test:main", 1, 1, "self={@s}");
+        DebugAst.SelectorQuery shorthandQuery = assertInstanceOf(
+                DebugAst.SelectorQuery.class,
+                assertInstanceOf(DebugAst.ExpressionPart.class, shorthand.parts().get(1)).query());
+        assertEquals("@s", shorthandQuery.selector());
+        DebugDirectiveValidator.validate(shorthand);
     }
 
     @Test
@@ -218,6 +238,24 @@ final class DebugDirectiveParserTest {
         assertEquals("abcdefgh…[truncated]", truncated.getString());
         assertEquals(20, truncated.getString().length());
         assertTrue(truncated.toFlatList().getFirst().getStyle().getHoverEvent() != null);
+    }
+
+    @Test
+    void debugValuesFollowVanillaSyntaxHighlightingWithoutOverwritingNativeNameColors() {
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GOLD).getColor(),
+                DebugDirectiveRenderer.numberValue("42").getStyle().getColor());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.AQUA).getColor(),
+                DebugDirectiveRenderer.identifierValue("minecraft:overworld").getStyle().getColor());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GREEN).getColor(),
+                DebugDirectiveRenderer.stringValue(Component.literal("Steve")).getStyle().getColor());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GOLD).getColor(),
+                DebugDirectiveRenderer.formattedNumberValue("20.0", Component.empty()
+                        .append(Component.literal("20.0").withStyle(ChatFormatting.GOLD)))
+                        .getStyle().getColor());
+
+        Component teamColored = Component.literal("Steve").withStyle(ChatFormatting.RED);
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.RED).getColor(),
+                DebugDirectiveRenderer.stringValue(teamColored).getStyle().getColor());
     }
 
     @Test

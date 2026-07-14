@@ -1,13 +1,21 @@
+import { readFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { batchRequestSchema, commandRequestSchema, inputSequenceRequestSchema } from "@mc-command/protocol";
 import { z } from "zod";
 import { BridgeClient } from "./bridge-client.js";
 
+const toolkitMetadata = JSON.parse(
+  readFileSync(new URL("../../../package.json", import.meta.url), "utf8"),
+) as { version?: unknown };
+if (typeof toolkitMetadata.version !== "string") {
+  throw new Error("Root package.json does not contain a toolkit version");
+}
+
 const bridge = new BridgeClient();
 const server = new McpServer({
   name: "mc-command-mcp",
-  version: "0.1.0",
+  version: toolkitMetadata.version,
 });
 
 function textResult(value: unknown) {

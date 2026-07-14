@@ -27,7 +27,7 @@ public final class DebugAst {
     public record ExpressionPart(Query query, Format format, int offset) implements TemplatePart {
     }
 
-    public sealed interface Query permits ContextQuery, ScoreQuery, DataQuery {
+    public sealed interface Query permits ContextQuery, SelectorQuery, ScoreQuery, DataQuery {
     }
 
     public enum ContextKey {
@@ -41,6 +41,9 @@ public final class DebugAst {
     }
 
     public record ContextQuery(ContextKey key) implements Query {
+    }
+
+    public record SelectorQuery(String selector, int selectorOffset) implements Query {
     }
 
     public record ScoreQuery(

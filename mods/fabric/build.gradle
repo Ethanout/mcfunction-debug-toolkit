@@ -3,7 +3,13 @@ plugins {
     id 'maven-publish'
 }
 
-version = project.mod_version
+def toolkitMetadata = new groovy.json.JsonSlurper().parse(file("../../package.json"))
+if (!(toolkitMetadata.version instanceof String)
+        || !(toolkitMetadata.version ==~ /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/)) {
+    throw new GradleException("Root package.json must contain a valid toolkit version")
+}
+
+version = toolkitMetadata.version
 group = project.maven_group
 
 base {

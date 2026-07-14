@@ -12,6 +12,7 @@ import dev.underline.mccommand.bridge.debug.DebugAst.FormatPart;
 import dev.underline.mccommand.bridge.debug.DebugAst.NestedListPart;
 import dev.underline.mccommand.bridge.debug.DebugAst.Query;
 import dev.underline.mccommand.bridge.debug.DebugAst.ScoreQuery;
+import dev.underline.mccommand.bridge.debug.DebugAst.SelectorQuery;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.NbtPathArgument;
 import net.minecraft.commands.arguments.ScoreHolderArgument;
@@ -41,7 +42,9 @@ public final class DebugDirectiveValidator {
 
     private static void validateQuery(ExpressionPart expression) throws DebugParseException {
         Query query = expression.query();
-        if (query instanceof ScoreQuery score) {
+        if (query instanceof SelectorQuery selector) {
+            ensureConsumed(EntityArgument.entities(), selector.selector(), selector.selectorOffset(), "entity selector");
+        } else if (query instanceof ScoreQuery score) {
             ensureConsumed(
                     ScoreHolderArgument.scoreHolders(),
                     score.holder(),
@@ -121,6 +124,7 @@ public final class DebugDirectiveValidator {
 
     private static Set<String> fieldsFor(Query query, boolean hierarchicalData) {
         if (query instanceof ContextQuery) return CONTEXT_FIELDS;
+        if (query instanceof SelectorQuery) return CONTEXT_FIELDS;
         if (query instanceof ScoreQuery) return SCORE_FIELDS;
         return hierarchicalData ? DATA_GROUP_FIELDS : DATA_LEAF_FIELDS;
     }
