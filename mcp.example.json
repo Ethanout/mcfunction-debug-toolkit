@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "mc-command": {
+      "command": "node",
+      "args": ["C:/absolute/path/mc-command-mcp/packages/mcp-server/dist/index.js"],
+      "env": {
+        "MC_COMMAND_BASE_URL": "http://127.0.0.1:8766",
+        "MC_COMMAND_CLIENT_BASE_URL": "http://127.0.0.1:8767",
+        "MC_COMMAND_TOKEN": "replace-with-config-token"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "min_format": [107, 1],
+    "max_format": 107,
+    "description": "MC Command MCP real-world #! syntax test"
+  }
+}

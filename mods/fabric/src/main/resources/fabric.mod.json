@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "mc-command-bridge",
+  "version": "${version}",
+  "name": "MC Command Bridge",
+  "description": "Local command development bridge for MC Command MCP.",
+  "authors": ["Underline"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.underline.mccommand.bridge.McCommandBridge"],
+    "client": ["dev.underline.mccommand.bridge.client.McCommandClient"]
+  },
+  "mixins": [
+    "mc-command-bridge.server.mixins.json",
+    "mc-command-bridge.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.2.x",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

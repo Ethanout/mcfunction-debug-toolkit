@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "dev.underline.mccommand.bridge.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["ChatComponentMixin", "KeyboardHandlerInvoker", "MouseHandlerInvoker"],
+  "injectors": {"defaultRequire": 1}
+}

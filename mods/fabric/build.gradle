@@ -1,0 +1,106 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    testImplementation platform("org.junit:junit-bom:5.12.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "org.junit.platform:junit-platform-launcher"
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        "mc-command-bridge" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+def projectPathIsAscii = java.nio.charset.StandardCharsets.US_ASCII.newEncoder().canEncode(projectDir.absolutePath)
+
+def isolatedJUnitTest = tasks.register("isolatedJUnitTest") {
+    group = "verification"
+    description = "Discovers and runs every JUnit test without Gradle's Windows test-worker path encoding."
+    dependsOn tasks.named("testClasses")
+    inputs.files(sourceSets.test.runtimeClasspath)
+    doLast {
+        URL[] urls = sourceSets.test.runtimeClasspath.files.collect { it.toURI().toURL() } as URL[]
+        try (URLClassLoader loader = new URLClassLoader(urls, ClassLoader.getPlatformClassLoader())) {
+            Thread thread = Thread.currentThread()
+            ClassLoader previous = thread.contextClassLoader
+            thread.contextClassLoader = loader
+            try {
+                Class<?> testClass = Class.forName(
+                        "dev.underline.mccommand.bridge.AllTestsLauncher", true, loader)
+                Object[] invocationArguments = [([] as String[])] as Object[]
+                testClass.getMethod("main", String[].class).invoke(null, invocationArguments)
+            } catch (java.lang.reflect.InvocationTargetException error) {
+                throw new GradleException("Discovered JUnit tests failed", error.targetException)
+            } finally {
+                thread.contextClassLoader = previous
+            }
+        }
+    }
+}
+
+if (!projectPathIsAscii) {
+    tasks.named("test") {
+        enabled = false
+    }
+    tasks.named("check") {
+        dependsOn isolatedJUnitTest
+    }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+jar {
+    inputs.property "archivesName", project.archives_base_name
+    from("LICENSE") {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            from components.java
+        }
+    }
+}
