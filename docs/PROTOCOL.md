@@ -1,5 +1,7 @@
 # Bridge protocol v1
 
+**English** | [简体中文](PROTOCOL_zh-CN.md)
+
 Default address: `http://127.0.0.1:8766`
 
 Client address: `http://127.0.0.1:8767`

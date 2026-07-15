@@ -1,59 +1,65 @@
-# `#!` 调试指令
+# `#!` Debug Directives
 
-`#!` 是写在 `.mcfunction` 里的调试模板。数据包加载时，模组会解析这些
-注释；函数运行时，它把结果作为原生 Minecraft `Component` 发给所有玩家，
-同时把结构化事件保存给 MCP。它的目标是减少调试命令长度，而不是替代
-`tellraw` 的全部功能。
+**English** | [简体中文](DEBUG_DIRECTIVES_zh-CN.md)
 
-## 快速示例
+`#!` is a debug template embedded in a `.mcfunction` file. The mod parses these
+comments when a datapack loads. When the function runs, it sends the result to
+all players as a native Minecraft `Component` and stores a structured event for
+MCP. It is designed to shorten debugging commands, not replace every feature of
+`tellraw`.
+
+## Quick example
 
 ```mcfunction
-#! 当前函数：{fname}；位置：{position:.2f}
-#! num：{@e num: {"{display_name}: {score:04d}"}, ...}
-#! storage：{storage demo:test values[]: {}, ...}
+#! function: {fname}; position: {position:.2f}
+#! num: {@e num: {"{display_name}: {score:04d}"}, ...}
+#! storage: {storage demo:test values[]: {}, ...}
 ```
 
-基本形式：
+Basic form:
 
 ```text
 #! plaintext {query[:format]} plaintext
 ```
 
-同一条调试指令可以有多个查询。普通文本和查询结果最终拼成同一个原生
-文本组件。
+A directive may contain multiple queries. Plain text and query results are
+combined into one native text component.
 
-纯文本调试行也会正常输出，可用于插入醒目的分隔标题：
+Plain-text directives are also emitted, which is useful for labels and visible
+separators:
 
 ```mcfunction
 #! =====Debug=====
 ```
 
-## 查询
+## Queries
 
-单参数上下文查询：
+Single-argument context queries:
 
-| 写法 | 结果 |
+| Syntax | Result |
 |---|---|
-| `name` | 与命令源、`/say` 相同语义的显示名称 |
-| `dim` / `dimension` | 客户端本地化维度名；悬停显示命名空间 ID |
-| `pos` / `position` | 执行位置 `x y z` |
-| `rot` / `rotation` | 执行朝向 `yaw pitch` |
-| `anch` / `anchor` | `feet` 或 `eyes` |
-| `fname` / `function_name` | 当前正在运行的函数 |
-| `fstack` / `function_stack` | 当前同步函数调用栈 |
+| `name` | Display name using the same command-source semantics as `/say` |
+| `dim` / `dimension` | Localized dimension name; hover shows the namespaced ID |
+| `pos` / `position` | Execution position as `x y z` |
+| `rot` / `rotation` | Execution rotation as `yaw pitch` |
+| `anch` / `anchor` | `feet` or `eyes` |
+| `fname` / `function_name` | Function currently being executed |
+| `fstack` / `function_stack` | Current synchronous function call stack |
 
-计划函数开始新的调用栈根；同步嵌套的 `/function` 会出现在 `fstack` 中。
+A scheduled function starts a new stack root. Synchronously nested `/function`
+calls appear in `fstack`.
 
-单个选择器会按原版 `tellraw` selector 文本组件渲染实体显示名称：
+A selector by itself renders entity display names like vanilla's `tellraw`
+selector component:
 
 ```mcfunction
 #! Self: {@s}
 #! Targets: {@e[tag=test]}
 ```
 
-选择器为空时渲染为空；多实体结果使用原版名称连接方式。
+An empty selector renders nothing. Multiple entities use vanilla name joining.
 
-两个参数按原版 score holder + objective 解析：
+Two arguments are parsed as a vanilla score holder and objective:
 
 ```mcfunction
 #! {@s num}
@@ -61,14 +67,15 @@
 #! {* num: {"{holder}={score:04d}"}, ...}
 ```
 
-实体没有该 objective 的分数时会跳过。`*` 使用原版 tracked-holder 行为，
-包括离线玩家和假玩家。score 项字段为：
+Entities without a score in that objective are skipped. `*` follows vanilla's
+tracked-holder behavior, including offline players and fake players. Score item
+fields are:
 
-- `{}`、`{score}`：分数值；
-- `{name}`、`{display_name}`：显示名称，悬停显示 holder 原名；
-- `{holder}`：记分板中的精确名称。
+- `{}` or `{score}`: score value;
+- `{name}` or `{display_name}`: display name with the raw holder on hover;
+- `{holder}`: exact scoreboard holder name.
 
-NBT 查询使用原版选择器、方块坐标和 NBT path 解析：
+NBT queries use vanilla selectors, block coordinates, and NBT path parsing:
 
 ```mcfunction
 #! {storage demo:test values[]: {}, ...}
@@ -76,69 +83,75 @@ NBT 查询使用原版选择器、方块坐标和 NBT path 解析：
 #! {block ~ ~ ~ id}
 ```
 
-NBT 项字段为：
+NBT item fields are:
 
-- `{}`、`{value}`：当前 NBT 值；
-- `{entity}`：当前来源实体或数据来源标签；
-- `{index}`：当前来源内的值下标；
-- `{entity_index}`：来源实体下标；
-- `{global_index}`：扁平结果的全局下标。
+- `{}` or `{value}`: current NBT value;
+- `{entity}`: current source entity or data-source label;
+- `{index}`: value index within the current source;
+- `{entity_index}`: source entity index;
+- `{global_index}`: global index in the flattened result.
 
-NBT 用原版彩色 SNBT Component 显示，因此字符串保留引号，数字保留 NBT
-类型后缀。
+NBT is displayed with vanilla's colored SNBT component, so strings keep their
+quotes and numbers keep their NBT type suffixes.
 
-## 列表与 `...`
+## Lists and `...`
 
-`...` 表示重复它之前的当前层 pattern：
+`...` repeats the current-level pattern immediately before it:
 
 ```mcfunction
 #! {storage demo:test values[]: {}, ...}
 #! {storage demo:test values[]: {}, {}, ...}
 ```
 
-每层最多一个 `...`。它必须是该格式层的最后一个 token，后面只能有空白
-和可选的 `/strip` 或 `/no_strip`。
+Each level may contain at most one `...`. It must be the final token at that
+formatting level, followed only by whitespace and optional `/strip` or
+`/no_strip`.
 
-- 默认 `/strip`：最后一份 pattern 用完最后一个值后，静默删除其尾部；
-- `/no_strip`：保留没有值可填的占位符和尾部文本。
+- Default `/strip`: silently removes the tail of the final pattern after the
+  last value is consumed.
+- `/no_strip`: preserves placeholders and trailing text that have no value.
 
-例如三个值使用 `{}, {}, ... /no_strip` 时，会得到类似：
+For example, three values formatted with `{}, {}, ... /no_strip` produce
+something like:
 
 ```text
 1, 2, 3, {},
 ```
 
-复合项使用 `{"..."}`，其内部多个字段属于同一个值：
+A compound item uses `{"..."}`. Multiple fields inside it belong to one value:
 
 ```mcfunction
 #! {@e num: {"{display_name}: {score}"}, ...}
 ```
 
-嵌套格式有独立的 `...`。下面按实体保留二维分组，再格式化每个实体的
-`Pos[]`：
+Nested formats have independent `...` operators. This keeps a two-dimensional
+group per entity and then formats each entity's `Pos[]` values:
 
 ```mcfunction
-#! 坐标：{
+#! positions: {
 #! entity @a Pos[]: {{}, ...}\n ...
 #! }
 ```
 
-显式格式没有 `...` 时只接受一个运行时值；得到多个值会丢弃正常输出，
-但不会中止函数。
+An explicit format without `...` accepts exactly one runtime value. Multiple
+values discard the normal output but do not stop the function.
 
-## 数字格式
+## Numeric formatting
 
-参数值沿用原版 SNBT 的视觉语义：数字为金色，字符串与未着色的实体名称为绿色，维度、函数名等资源标识符为青色。实体已有的队伍色或自定义颜色会被保留；普通文本不自动着色。
+Values follow vanilla SNBT color semantics: numbers are gold, strings and
+otherwise unstyled entity names are green, and resource identifiers such as
+dimensions and function names are aqua. Existing entity team or custom colors
+are preserved. Plain text is not colored automatically.
 
-支持 `d`、`f`、`e`、`g` 和自定义 `p`：
+The formatter supports `d`, `f`, `e`, `g`, and custom `p`:
 
-- `d`：整数；
-- `f`：定点小数；
-- `e`：科学计数法；
-- `g`：有效数字，可使用科学计数法；
-- `p`：有效数字，强制不用科学计数法。
+- `d`: integer;
+- `f`: fixed-point decimal;
+- `e`: scientific notation;
+- `g`: significant digits, with scientific notation when appropriate;
+- `p`: significant digits, never using scientific notation.
 
-支持精度、宽度、补零和基础对齐：
+Precision, width, zero padding, and basic alignment are supported:
 
 ```mcfunction
 #! {position:.2f}
@@ -146,59 +159,69 @@ NBT 用原版彩色 SNBT Component 显示，因此字符串保留引号，数字
 #! {storage demo:test value: {value:.6p}}
 ```
 
-数字格式遇到非数字时不报错，原样显示该值。位置和朝向在没有格式时使用
-Java 的 shortest round-trip 数字文本。宽度和精度都不能超过 32,000；
-负数补零放在符号后面，例如 `-3` 使用 `04d` 得到 `-003`。`p` 遇到
-`NaN` 或无穷大时保留 Java 的非有限数字文本，不进入十进制舍入。
-`d` 只应用于可精确表示为整数的数字；小数、`NaN` 和无穷大保持原生值，
-不会被静默截成整数。与 Python `g` 一致，`.0g`（以及对应的自定义 `.0p`）
-按 1 位有效数字处理。
+Applying a numeric format to a non-number is not an error; the original value
+is displayed. Unformatted positions and rotations use Java's shortest
+round-trip number text. Width and precision are each limited to 32,000. Zero
+padding for negative numbers follows the sign, so `-3` with `04d` becomes
+`-003`. For `NaN` and infinity, `p` preserves Java's non-finite text instead of
+performing decimal rounding. `d` applies only to values exactly representable
+as integers; decimals, `NaN`, and infinity remain unchanged instead of being
+silently truncated. Like Python's `g`, `.0g` and the corresponding custom `.0p`
+use one significant digit.
 
-## 换行与转义
+## Multiline directives and escaping
 
-括号尚未配对时，连续的 `#!` 行会拼成同一条指令。第一条非 `#!` 行不会
-被吞掉。
+Consecutive `#!` lines are joined while braces remain unmatched. The first
+non-`#!` line is never consumed.
 
-支持：`\{`、`\}`、`\\`、`\"`、`\n`、`\t`。给列表加字面量花括号可写：
+Supported escapes are `\{`, `\}`, `\\`, `\"`, `\n`, and `\t`. To surround a
+list with literal braces, write:
 
 ```mcfunction
 #! literal=\{{storage demo:test values[]: {}, ...}\}
 ```
 
-## 错误、限制与 AI 输出
+## Errors, limits, and AI output
 
-解析错误发生在数据包 reload：整条 `#!` 被跳过、记录警告，其他函数行
-继续加载。警告会映射到真实 `.mcfunction` 行列。选择器、记分板 holder、
-storage ID、方块坐标、NBT path、格式字段和嵌套列表的适用性也在 reload
-阶段用原版解析器验证。reload 只有成功后才会原子切换到新一代指令注册表；
-监听器异常失败时保留上一代。
+Parse errors are handled during datapack reload: the entire `#!` directive is
+skipped with a warning, while other function lines continue loading. Warnings
+map to the real `.mcfunction` line and column. Selectors, scoreboard holders,
+storage IDs, block coordinates, NBT paths, format fields, and nested-list
+validity are also checked at reload time with vanilla parsers. A reload swaps
+to the new directive registry atomically only after success; an unexpected
+listener failure preserves the previous generation.
 
-NBT 动态内容遵循原版 `tellraw` 的空结果：路径不存在、实体选择为空、方块
-未加载或不是方块实体时，该查询渲染为空，不显示红色运行时错误。
+Dynamic NBT content follows vanilla `tellraw` empty-result behavior. A missing
+path, empty entity selection, unloaded block, or non-block-entity renders an
+empty query instead of a red runtime error.
 
-运行时错误会：
+Runtime errors:
 
-1. 丢弃该条正常输出；
-2. 给所有玩家显示短错误，例如
-   `[#! demo:main:18] expected one value, got 4`；
-3. 向日志和 AI 诊断缓冲写入完整信息；
-4. 继续执行函数后续命令。
+1. discard that directive's normal output;
+2. show all players a short error such as
+   `[#! demo:main:18] expected one value, got 4`;
+3. write full details to the log and AI diagnostics buffer;
+4. continue executing later commands in the function.
 
-限制：每条指令共享最多 256 个集合叶子、512 个 score/entity/storage/block
-来源访问、1 MiB 被选择的 NBT 数据、32,000 个渲染字符和 64 层模板深度。
-无界实体选择器会在原版解析后被内部改写为最多探测 513 个结果，以便在
-第 513 个来源处准确标记截断。超过预算时不终止函数，而是保留能容纳的结果、追加
-`…[truncated]`，并让结构化事件返回 `truncated=true`。字符截断会尽量保留
-完整原生组件及其样式、悬停信息，只缩短最后一个装不下的片段。重复运行时
-诊断会限流。
+Each directive shares limits of 256 collection leaves, 512 score/entity/storage/
+block source visits, 1 MiB of selected NBT data, 32,000 rendered characters,
+and 64 template levels. After vanilla parsing, an unbounded entity selector is
+internally capped at probing 513 results so truncation can be marked precisely
+at the 513th source. Exceeding a budget does not stop the function: fitting
+results are retained, `…[truncated]` is appended, and the structured event
+returns `truncated=true`. Character truncation preserves complete native
+components, styling, and hover information when possible, shortening only the
+final fragment that does not fit. Repeated runtime diagnostics are rate-limited.
 
-MCP 使用：
+MCP tools:
 
-- `mc_debug_events`：增量读取成功输出和运行时错误；
-- `mc_debug_diagnostics`：增量读取 reload 警告和详细运行时诊断。
+- `mc_debug_events`: incrementally reads successful output and runtime errors;
+- `mc_debug_diagnostics`: incrementally reads reload warnings and detailed
+  runtime diagnostics.
 
-两者使用分页游标，返回 `next_id`、`latest_id`、`oldest_id`、`more` 和
-`dropped`。下一次轮询把 `next_id` 作为 `since`，并在 `more=true` 时继续；
-`dropped=true` 表示请求的游标早于有界缓冲中仍保留的最旧事件，调用方应从
-当前响应重新同步。过大的原生组件 JSON 会以 `component_omitted=true` 省略，
-但保留有界纯文本。
+Both use paged cursors and return `next_id`, `latest_id`, `oldest_id`, `more`,
+and `dropped`. Pass `next_id` as `since` on the next poll and continue while
+`more=true`. `dropped=true` means the requested cursor predates the oldest
+event retained in the bounded buffer, so the caller should resynchronize from
+the current response. Oversized native-component JSON is omitted with
+`component_omitted=true`, while bounded plain text remains available.

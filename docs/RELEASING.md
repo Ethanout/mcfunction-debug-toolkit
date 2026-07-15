@@ -1,5 +1,7 @@
 # Release workflow
 
+**English** | [简体中文](RELEASING_zh-CN.md)
+
 The root `package.json` is the only manually maintained toolkit version.
 
 Set a release version with one command from the repository root:

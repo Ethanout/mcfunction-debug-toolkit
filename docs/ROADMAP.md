@@ -1,5 +1,7 @@
 # Roadmap
 
+**English** | [简体中文](ROADMAP_zh-CN.md)
+
 ## Completed in 0.2
 
 - Incremental HUD chat capture, including tellraw text.

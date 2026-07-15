@@ -1,5 +1,7 @@
 # Hostile audit remediation plan
 
+**English** | [简体中文](HOSTILE_AUDIT_REMEDIATION_zh-CN.md)
+
 This file records the independent hostile review and the decisions made after
 checking each claim against the current Minecraft 26.2 implementation. Keep it
 updated while the fixes are in progress.

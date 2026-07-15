@@ -1,5 +1,7 @@
 # `#!` debug directive implementation plan
 
+**English** | [简体中文](DEBUG_DIRECTIVE_IMPLEMENTATION_PLAN_zh-CN.md)
+
 This document is the implementation checklist and decision log for the human-first
 Minecraft function debugging syntax. Read it before changing the parser or runtime.
 

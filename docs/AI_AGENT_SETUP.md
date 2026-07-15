@@ -1,5 +1,7 @@
 # AI Agent Setup
 
+**English** | [简体中文](AI_AGENT_SETUP_zh-CN.md)
+
 This is the installation and connection reference for an AI agent or an
 operator configuring the optional MCP integration. Ordinary `#!` datapack
 debugging does not require an AI client.

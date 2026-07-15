@@ -1,5 +1,7 @@
 # Architecture
 
+**English** | [简体中文](ARCHITECTURE_zh-CN.md)
+
 ```text
 AI client
   -> MCP stdio

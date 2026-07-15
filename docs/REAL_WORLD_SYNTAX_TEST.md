@@ -1,5 +1,7 @@
 # Real-world syntax test
 
+**English** | [简体中文](REAL_WORLD_SYNTAX_TEST_zh-CN.md)
+
 The versioned source of the datapack is:
 
 ```text

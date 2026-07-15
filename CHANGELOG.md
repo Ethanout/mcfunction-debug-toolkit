@@ -1,5 +1,7 @@
 # Changelog
 
+**English** | [简体中文](CHANGELOG_zh-CN.md)
+
 All notable changes to MCFunction Debug Toolkit are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/).
 
